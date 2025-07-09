@@ -9,13 +9,6 @@ import sys
 ## ffmpeg command for rendering the video afterwards: ffmpeg -framerate 12 -i frame_%04d.jpg -vf "scale=1920:-2" -c:v libx264 -preset ultrafast -crf 30 -threads 8 -max_muxing_queue_size 1024 -bufsize 256M -rtbufsize 256M output.mp4
 ## ffmpeg -framerate 12 -i frame_%04d.jpg -vf "scale=1920:-2" -c:v h264_nvenc -preset p1 -rc:v vbr -cq 30 -b:v 5M -max_muxing_queue_size 1024 -bufsize 256M -rtbufsize 256M output.mp4
 
-# --- CONFIGURATION ---
-# The folders correspond to the positions in the grid as follows:
-# GRID_ROWS = 3, GRID_COLS = 2
-# [image_0, image_1]
-# [image_2, image_3]
-# [image_4, image_5]
-
 FOLDERS = [
     '/mnt/s/cutbag/syncd/image_1_blur',# top-left
     '/mnt/s/cutbag/syncd/image_2_blur',# top-right
