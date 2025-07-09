@@ -10,12 +10,12 @@ import sys
 ## ffmpeg -framerate 12 -i frame_%04d.jpg -vf "scale=1920:-2" -c:v h264_nvenc -preset p1 -rc:v vbr -cq 30 -b:v 5M -max_muxing_queue_size 1024 -bufsize 256M -rtbufsize 256M output.mp4
 
 FOLDERS = [
-    '/mnt/s/cutbag/syncd/image_1_blur',# top-left
-    '/mnt/s/cutbag/syncd/image_2_blur',# top-right
-    '/mnt/s/cutbag/syncd/image_0_blur',# middle-left
-    '/mnt/s/cutbag/syncd/image_5_blur',# middle-right
-    '/mnt/s/cutbag/syncd/image_3_blur',# bottom-left
-    '/mnt/s/cutbag/syncd/image_4_blur',# bottom-right
+    '/mnt/s/cutbag/image_1',# top-left
+    '/mnt/s/cutbag/image_2',# top-right
+    '/mnt/s/cutbag/image_0',# middle-left
+    '/mnt/s/cutbag/image_5',# middle-right
+    '/mnt/s/cutbag/image_3',# bottom-left
+    '/mnt/s/cutbag/image_4',# bottom-right
 ]
 
 OUTPUT_FOLDER = 'output_frames'
