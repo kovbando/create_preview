@@ -1,13 +1,13 @@
 # create_preview
-Python script(s) to create an NxN collage of synchronized pictures output from ros2 bag export images.
+Python script to create a 3x2 collage of synchronized pictures output from ros2 bag export images.
 # Dependencies
 The only nan-python dependency is FFMPEG. You probably already have it on your system, but if not, just run\
 `sudo apt install ffmpeg`\
 Preferably use a python virtual environment, and install dependencies via pip\
 `pip install -r requirements.txt`
 # Usage
-When you have all the pictures ready to be turned into a preview video, edit the "create_preview.py" file to include the correct folders in the "FOLDERS" section. (lines 12-19). After this, just run the script.\
-All the merged images will be in a folder named "output_frames" next to the script.
+When you have all the pictures ready to be turned into a preview video, run "create_preview.py" with the `-c` option followed by the path to a file containing the folders to use the images from, in the order they should appear in the collage.\
+All the merged images will be in a folder named "output_frames" in the folder specified in `-o`.
 ## Turning images to video
 After running the script, you will have all the images, but still no video. To turn the images into a video file, use FFMPEG. There are two example commands, that produce good results.\
 If you want to use CPU for encoding:\
