@@ -24,7 +24,10 @@ def parse_config_file(config):
                 # Strip whitespace and newline characters
                 path = line.strip()
                 if path:  # Skip empty lines
-                    folders.append(path)
+                    if not os.path.isdir(path):
+                        print(f'No directory at {path}.')
+                    else:
+                        folders.append(path)
     except FileNotFoundError:
         print(f"Error: The file '{config}' was not found.")
     except Exception as e:
