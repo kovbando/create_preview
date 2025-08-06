@@ -11,7 +11,6 @@ import argparse
 ## ffmpeg -framerate 12 -i frame_%04d.jpg -vf "scale=1920:-2" -c:v h264_nvenc -preset p1 -rc:v vbr -cq 30 -b:v 5M -max_muxing_queue_size 1024 -bufsize 256M -rtbufsize 256M output.mp4
 
 IMAGE_SIZE = (1920, 1200)  # input image size
-GRID_ROWS = 3
 GRID_COLS = 2
 
 
@@ -33,8 +32,6 @@ def parse_config_file(config):
     except Exception as e:
         print(f"An error occurred while reading the file: {e}")
 
-    print(folders)
-
     return folders
 
 
@@ -46,13 +43,13 @@ def load_images_from_folder(folder):
     ])
 
 
-def create_grid_frame_and_save(index, folders_images, progress_queue, output):
+def create_grid_frame_and_save(index, folders_images, grid_rows, progress_queue, output):
     try:
         image_paths = [folder[index] for folder in folders_images]
         images = [Image.open(p).resize(IMAGE_SIZE) for p in image_paths]
 
         grid_width = IMAGE_SIZE[0] * GRID_COLS
-        grid_height = IMAGE_SIZE[1] * GRID_ROWS
+        grid_height = IMAGE_SIZE[1] * grid_rows
         grid_image = Image.new('RGB', (grid_width, grid_height))
 
         for idx, img in enumerate(images):
@@ -73,6 +70,7 @@ def unite_images(config, output):
     os.makedirs(output, exist_ok=True)
 
     folders = parse_config_file(config)
+    grid_rows = (len(folders) + 1) // GRID_COLS
 
     def handle_interrupt(sig, frame):
         print("\nInterrupt received, shutting down...", flush=True)
@@ -91,7 +89,7 @@ def unite_images(config, output):
         progress_queue = manager.Queue()
         with Pool(processes=cpu_count()) as pool:
             for i in args:
-                pool.apply_async(create_grid_frame_and_save, args=(i, folders_images, progress_queue, output))
+                pool.apply_async(create_grid_frame_and_save, args=(i, folders_images, grid_rows, progress_queue, output))
 
             try:
                 with tqdm(total=frame_count) as pbar:
