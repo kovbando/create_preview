@@ -1,0 +1,27 @@
+# Configuration file for create_preview.py
+# This is an example template - modify the values according to your actual paths and requirements
+
+# List of input topic folders containing images to be combined in the collage
+# These should be paths to directories with synchronized images
+topics:
+  - /mnt/s/20251220/BVSC_dualcam_20FPS/convert/images/image_0_c
+  - /mnt/s/20251220/BVSC_dualcam_20FPS/convert/images/image_2_c
+#  - /path/to/topic3
+
+# Output directory where the generated frame images will be saved
+output_dir: /mnt/s/20251220/BVSC_dualcam_20FPS/convert/
+#output_dir: ./preview
+
+# Number of columns in the collage grid
+# If only cols or rows is specified, the other will be calculated automatically
+cols: 2
+
+# Number of rows in the collage grid
+# If only cols or rows is specified, the other will be calculated automatically
+rows: 1
+
+# Width to resize each input image to (in pixels)
+image_width: 1920
+
+# Height to resize each input image to (in pixels)
+image_height: 1200

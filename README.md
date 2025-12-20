@@ -15,6 +15,10 @@ The script can be run with possible options described by
 ```
 python3 create_preview.py -h
 ```
+You can configure all the accepted parameters in a yaml file. For example look at `configuration.yaml`. After editing the yaml file run the program with:
+```
+python3 create_preview.py -c configuration.yaml
+```
 
 The following options can be specified in a yaml config file (given in the option --config):
 ```
