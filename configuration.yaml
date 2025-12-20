@@ -4,21 +4,23 @@
 # List of input topic folders containing images to be combined in the collage
 # These should be paths to directories with synchronized images
 topics:
-  - /mnt/s/20251220/BVSC_dualcam_20FPS/convert/images/image_0_c
-  - /mnt/s/20251220/BVSC_dualcam_20FPS/convert/images/image_2_c
-#  - /path/to/topic3
+  - /path/to/image_0_c
+  - /path/to/image_1_c
+  - /path/to/image_2_c
+  - /path/to/image_3_c
+  - /path/to/image_4_c
+  - /path/to/image_5_c
 
 # Output directory where the generated frame images will be saved
-output_dir: /mnt/s/20251220/BVSC_dualcam_20FPS/convert/
-#output_dir: ./preview
+output_dir: ./preview
 
 # Number of columns in the collage grid
 # If only cols or rows is specified, the other will be calculated automatically
-cols: 2
+cols: 3
 
 # Number of rows in the collage grid
 # If only cols or rows is specified, the other will be calculated automatically
-rows: 1
+rows: 2
 
 # Width to resize each input image to (in pixels)
 image_width: 1920

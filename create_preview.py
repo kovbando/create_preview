@@ -178,7 +178,7 @@ if __name__ == '__main__':
                         type=int, default=1080,
                         help='Input image height')
     parser.add_argument('-t', '--topics',
-                        nargs='+', required=True,
+                        nargs='+',
                         help='Input topic (folder) names')
 
     # override defaults with config file options
@@ -187,6 +187,10 @@ if __name__ == '__main__':
     # TODO verbose/silent
 
     args = parser.parse_args()
+
+    # Check if topics were provided either via config or command line
+    if not args.topics:
+        parser.error("the following arguments are required: -t/--topics (must be provided via config file or command line)")
 
     preview_creator = PreviewCreator(args.topics,
                                      os.path.realpath(args.output_dir),
