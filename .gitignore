@@ -1,3 +1,6 @@
 venv/
 output_frames/
-cconfig.yaml
+config.yaml
+cfg.yaml
+preview/*
+!preview/.gitkeep
