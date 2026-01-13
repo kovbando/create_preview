@@ -27,3 +27,6 @@ image_width: 1920
 
 # Height to resize each input image to (in pixels)
 image_height: 1200
+
+# Capture FPS of the input image streams (used for timestamp alignment)
+source_fps: 20.0
