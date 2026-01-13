@@ -211,20 +211,25 @@ def load_config_file(config_path):
 
 
 if __name__ == '__main__':
-    # parse command-line arguments
-    parser = argparse.ArgumentParser(description='Sreates a collage of synchronized pictures from different output from ros2 bag export image.')
+    # dedicated parser for config so help lists every option
+    config_parser = argparse.ArgumentParser(add_help=False)
+    config_parser.add_argument('--config',
+                               type=str, default='./topics.yaml',
+                               help='Path to config file')
 
-    # parse config file
-    parser.add_argument('--config',
-                        type=str, default='./topics.yaml',
-                        help='Path to config file')
-    args_config, remaining_argv = parser.parse_known_args()
+    # main parser includes config parser as parent to expose flag in help
+    parser = argparse.ArgumentParser(
+        description='Sreates a collage of synchronized pictures from different output from ros2 bag export image.',
+        parents=[config_parser]
+    )
+
+    # parse config args separately to avoid swallowing -h output
+    args_config, remaining_argv = config_parser.parse_known_args()
 
     # load config file if it exists
     config_options = {}
     if os.path.exists(args_config.config):
         config_options = load_config_file(args_config.config)
-
 
     # parse remaining arguments
     parser.add_argument('-o', '--output_dir',
@@ -254,7 +259,8 @@ if __name__ == '__main__':
 
     # TODO verbose/silent
 
-    args = parser.parse_args()
+    args = parser.parse_args(remaining_argv)
+    args.config = args_config.config
 
     # Check if topics were provided either via config or command line
     if not args.topics:
