@@ -8,8 +8,8 @@ import sys
 import argparse
 import yaml
 
-## ffmpeg command for rendering the video afterwards: ffmpeg -framerate 12 -i frame_%04d.jpg -vf "scale=1920:-2" -c:v libx264 -preset ultrafast -crf 30 -threads 8 -max_muxing_queue_size 1024 -bufsize 256M -rtbufsize 256M output.mp4
-## ffmpeg -framerate 12 -i frame_%04d.jpg -vf "scale=1920:-2" -c:v h264_nvenc -preset p1 -rc:v vbr -cq 30 -b:v 5M -max_muxing_queue_size 1024 -bufsize 256M -rtbufsize 256M output.mp4
+## ffmpeg command for rendering the video afterwards: ffmpeg -framerate 20 -i frame_%04d.jpg -vf "scale=1920:-2" -c:v libx264 -preset ultrafast -crf 30 -threads 8 -max_muxing_queue_size 1024 -bufsize 256M -rtbufsize 256M output.mp4
+## ffmpeg -framerate 20 -i ./preview/frame_%04d.jpg -vf "scale=1920:-2" -c:v h264_nvenc -preset p1 -rc:v vbr -cq 30 -b:v 5M -max_muxing_queue_size 1024 -bufsize 256M -rtbufsize 256M output.mp4
 
 
 def load_images_from_folder(folder):
@@ -151,20 +151,25 @@ def load_config_file(config_path):
 
 
 if __name__ == '__main__':
-    # parse command-line arguments
-    parser = argparse.ArgumentParser(description='Sreates a collage of synchronized pictures from different output from ros2 bag export image.')
+    # dedicated parser for config file so help shows full option list
+    config_parser = argparse.ArgumentParser(add_help=False)
+    config_parser.add_argument('--config',
+                               type=str, default='./topics.yaml',
+                               help='Path to config file')
 
-    # parse config file
-    parser.add_argument('--config',
-                        type=str, default='./topics.yaml',
-                        help='Path to config file')
-    args_config, remaining_argv = parser.parse_known_args()
+    # main parser inherits --config and handles help text
+    parser = argparse.ArgumentParser(
+        description='Sreates a collage of synchronized pictures from different output from ros2 bag export image.',
+        parents=[config_parser]
+    )
+
+    # parse config path without triggering help prematurely
+    args_config, remaining_argv = config_parser.parse_known_args()
 
     # load config file if it exists
     config_options = {}
     if os.path.exists(args_config.config):
         config_options = load_config_file(args_config.config)
-
 
     # parse remaining arguments
     parser.add_argument('-o', '--output_dir',
@@ -191,7 +196,7 @@ if __name__ == '__main__':
 
     # TODO verbose/silent
 
-    args = parser.parse_args()
+    args = parser.parse_args(remaining_argv)
 
     # Check if topics were provided either via config or command line
     if not args.topics:
