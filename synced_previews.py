@@ -138,7 +138,8 @@ class PreviewCreator:
         indices = range(frame_count)
         worker_args = (aligned_frames, self.image_size, self.cols, self.rows, self.output_path)
         process_count = min(cpu_count(), frame_count)
-        chunk_size = max(1, frame_count // (process_count * 4))
+        # Bound chunk size so tqdm still refreshes regularly even for large jobs.
+        chunk_size = max(1, min(32, frame_count // (process_count * 4)))
 
         pool = Pool(processes=process_count,
                     initializer=_init_worker,

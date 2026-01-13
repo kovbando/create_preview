@@ -1,3 +1,6 @@
+# This is the speedup branch!!!
+This branch has an updated process pooling logic, and performs way better than the main brancch, but needs more testing!
+
 # create_preview
 Python script to create a collage of synchronized or unsynchronized pictures output from ros2 bag export images. These scripts will not create the actual video, you will need to run ffmpeg manually for that, but there are some guidelines on how to do that.\
 **Please read the Sync logic section before running the script.**
