@@ -126,6 +126,7 @@ def load_config_file(config_path):
             'rows': int,
             'image_width': int,
             'image_height': int,
+        'source_fps': (int, float),
     }
 
     with open(config_path, 'r') as f:
@@ -139,8 +140,12 @@ def load_config_file(config_path):
 
     # validate types
     for key, expected_type in VALID_CONFIG_OPTIONS.items():
-        if key in config and not isinstance(config[key], expected_type):
-            raise TypeError(f"Invalid type for '{key}': expected {expected_type.__name__}, got {type(config[key]).__name__}")
+        if key in config and not isinstance(config[key], expected_type if isinstance(expected_type, tuple) else expected_type):
+            if isinstance(expected_type, tuple):
+                expected_names = ', '.join(t.__name__ for t in expected_type)
+            else:
+                expected_names = expected_type.__name__
+            raise TypeError(f"Invalid type for '{key}': expected {expected_names}, got {type(config[key]).__name__}")
 
     return config
 
