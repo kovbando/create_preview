@@ -2,5 +2,6 @@ venv/
 output_frames/
 config.yaml
 cfg.yaml
+output.mp4
 preview/*
 !preview/.gitkeep
