@@ -50,3 +50,4 @@ If you have an nvidia GPU and want to accelerate the encoding process:
 ```
 ffmpeg -framerate 20 -i ./preview/frame_%04d.jpg -vf "scale=1920:-2" -c:v h264_nvenc -preset p1 -rc:v vbr -cq 30 -b:v 5M -max_muxing_queue_size 1024 -bufsize 256M -rtbufsize 256M output.mp4
 ```
+TODO: make and test better optimiized FFMPEG commmands

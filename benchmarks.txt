@@ -1,0 +1,23 @@
+laptop 11gen:
+	nonspeed:
+		real    13m31.491s
+		user    72m25.093s
+		sys     22m38.174s
+	SPEEEEEED:
+		real	9m22.240s
+		user	50m19.032s
+		sys	20m3.064s
+
+desktop Ryzen 5800X:
+	nonspeed:
+		real    11m13.413s
+		user    33m57.804s
+		sys     24m38.467s
+	SPEEEEEED:
+		real    7m38.294s
+		user    37m23.500s
+		sys     37m34.215s
+	nonsync:
+		real    10m54.511s
+		user    29m0.004s
+		sys     27m1.797s
