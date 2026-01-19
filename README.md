@@ -44,10 +44,10 @@ source_fps: float,
 After running the script, you will have all the images, but still no video. To turn the images into a video file, use FFMPEG. There are two example commands, that produce good results.\
 If you want to use CPU for encoding:
 ```
-ffmpeg -framerate 20 -i ./preview/frame_%04d.jpg -vf "scale=1920:-2" -c:v libx264 -preset ultrafast -crf 30 -threads 8 -max_muxing_queue_size 1024 -bufsize 256M -rtbufsize 256M output.mp4
+ffmpeg -framerate 20 -i ./preview/frame_%04d.jpg -vf "scale=1920:-2" -c:v libx264 -preset ultrafast -crf 20 -threads 8 -max_muxing_queue_size 1024 -bufsize 256M -rtbufsize 256M output.mp4
 ```
 If you have an nvidia GPU and want to accelerate the encoding process:
 ```
-ffmpeg -framerate 20 -i ./preview/frame_%04d.jpg -vf "scale=1920:-2" -c:v h264_nvenc -preset p1 -rc:v vbr -cq 30 -b:v 5M -max_muxing_queue_size 1024 -bufsize 256M -rtbufsize 256M output.mp4
+ffmpeg -framerate 20 -i ./preview/frame_%04d.jpg -vf "scale=1920:-2" -c:v hevc_nvenc -preset p6 -rc vbr -cq 20 -b:v -max_muxing_queue_size 1024 -bufsize 256M -rtbufsize 256M output.mp4
 ```
 TODO: make and test better optimiized FFMPEG commmands
