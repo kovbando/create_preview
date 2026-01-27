@@ -48,6 +48,7 @@ ffmpeg -framerate 20 -i ./preview/frame_%04d.jpg -vf "scale=1920:-2" -c:v libx26
 ```
 If you have an nvidia GPU and want to accelerate the encoding process:
 ```
-ffmpeg -framerate 20 -i ./frame_%04d.jpg -vf "scale=1920:-2" -c:v hevc_nvenc -preset p6 -rc vbr -cq 20 output.mp4
+ffmpeg -framerate 20 -i ./output_frames/frame_%04d.jpg -vf "scale=1920:-2" -c:v hevc_nvenc -preset p6 -rc vbr -cq 20 preview.mp4
+ffmpeg -framerate 20 -i ./output_frames/frame_%04d.jpg -c:v hevc_nvenc -preset p6 -rc vbr -cq 20 preview.mp4
 ```
 TODO: make and test better optimiized FFMPEG commmands
