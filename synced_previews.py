@@ -67,7 +67,7 @@ def _worker_create_grid_frame(index):
             grid_image.paste(img, position)
 
         output_path = os.path.join(state['output_path'], f"frame_{index:04d}.jpg")
-        grid_image.save(output_path, quality=95)
+        grid_image.save(output_path, quality=90)
     except Exception as exc:
         print(f"Error on frame {index}: {exc}", flush=True)
     return 1
