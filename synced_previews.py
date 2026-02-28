@@ -1,5 +1,5 @@
 import os
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 from multiprocessing import Pool, cpu_count
 from tqdm import tqdm
 import signal
@@ -49,14 +49,46 @@ def _init_worker(aligned_frames, image_size, cols, rows, output_path):
     }
 
 
+def _fit_text_to_width(text, font, max_width, draw):
+    if draw.textbbox((0, 0), text, font=font)[2] <= max_width:
+        return text
+
+    ellipsis = '...'
+    trimmed = text
+    while trimmed:
+        trimmed = trimmed[:-1]
+        candidate = trimmed + ellipsis
+        if draw.textbbox((0, 0), candidate, font=font)[2] <= max_width:
+            return candidate
+    return ellipsis
+
+
+def _draw_text_box(draw, text, origin, font, padding=4, box_fill=(0, 0, 0), text_fill=(255, 255, 255)):
+    left, top = origin
+    text_box = draw.textbbox((0, 0), text, font=font)
+    text_width = text_box[2] - text_box[0]
+    text_height = text_box[3] - text_box[1]
+    rect = (left, top, left + text_width + (padding * 2), top + text_height + (padding * 2))
+    draw.rectangle(rect, fill=box_fill)
+    draw.text((left + padding, top + padding), text, font=font, fill=text_fill)
+    return rect
+
+
 def _worker_create_grid_frame(index):
     state = _worker_state
     try:
         image_paths = state['aligned_frames'][index]
         resized_images = []
+        font = ImageFont.load_default()
         for path in image_paths:
             with Image.open(path) as img:
-                resized_images.append(img.resize(state['image_size']))
+                resized = img.convert('RGB').resize(state['image_size'])
+                draw = ImageDraw.Draw(resized)
+                filename = os.path.basename(path)
+                max_text_width = state['image_size'][0] - 8
+                fitted = _fit_text_to_width(filename, font, max_text_width, draw)
+                _draw_text_box(draw, fitted, (4, 4), font)
+                resized_images.append(resized)
 
         grid_image = Image.new('RGB', state['grid_dims'])
         tile_width, tile_height = state['image_size']
@@ -67,6 +99,14 @@ def _worker_create_grid_frame(index):
             grid_image.paste(img, position)
 
         output_path = os.path.join(state['output_path'], f"frame_{index:04d}.jpg")
+        grid_draw = ImageDraw.Draw(grid_image)
+        output_name = os.path.basename(output_path)
+        max_text_width = state['grid_dims'][0] - 8
+        fitted_output = _fit_text_to_width(output_name, font, max_text_width, grid_draw)
+        output_box = grid_draw.textbbox((0, 0), fitted_output, font=font)
+        output_height = (output_box[3] - output_box[1]) + 8
+        output_top = max(4, state['grid_dims'][1] - output_height - 4)
+        _draw_text_box(grid_draw, fitted_output, (4, output_top), font)
         grid_image.save(output_path, quality=90)
     except Exception as exc:
         print(f"Error on frame {index}: {exc}", flush=True)
