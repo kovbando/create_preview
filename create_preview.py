@@ -198,6 +198,13 @@ if __name__ == '__main__':
 
     args = parser.parse_args(remaining_argv)
 
+    # fill in any values missing from CLI with config defaults
+    for key, value in config_options.items():
+        if getattr(args, key, None) is None:
+            setattr(args, key, value)
+
+    args.config = args_config.config
+
     # Check if topics were provided either via config or command line
     if not args.topics:
         parser.error("the following arguments are required: -t/--topics (must be provided via config file or command line)")

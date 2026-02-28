@@ -1,6 +1,6 @@
 import os
 from PIL import Image
-from multiprocessing import Pool, cpu_count, Manager
+from multiprocessing import Pool, cpu_count
 from tqdm import tqdm
 import signal
 import sys
@@ -29,6 +29,48 @@ def load_images_from_folder(folder):
         ts = extract_timestamp_ns(full_path)
         images.append((ts, full_path))
     return sorted(images, key=lambda item: item[0])
+
+
+# Store immutable state inside worker processes so only indices travel over the queue.
+_worker_state = {}
+
+
+def _init_worker(aligned_frames, image_size, cols, rows, output_path):
+    global _worker_state
+    grid_width = image_size[0] * cols
+    grid_height = image_size[1] * rows
+    _worker_state = {
+        'aligned_frames': aligned_frames,
+        'image_size': image_size,
+        'cols': cols,
+        'rows': rows,
+        'grid_dims': (grid_width, grid_height),
+        'output_path': output_path,
+    }
+
+
+def _worker_create_grid_frame(index):
+    state = _worker_state
+    try:
+        image_paths = state['aligned_frames'][index]
+        resized_images = []
+        for path in image_paths:
+            with Image.open(path) as img:
+                resized_images.append(img.resize(state['image_size']))
+
+        grid_image = Image.new('RGB', state['grid_dims'])
+        tile_width, tile_height = state['image_size']
+        for idx, img in enumerate(resized_images):
+            row = idx // state['cols']
+            col = idx % state['cols']
+            position = (col * tile_width, row * tile_height)
+            grid_image.paste(img, position)
+
+        output_path = os.path.join(state['output_path'], f"frame_{index:04d}.jpg")
+        grid_image.save(output_path, quality=90)
+    except Exception as exc:
+        print(f"Error on frame {index}: {exc}", flush=True)
+    return 1
 
 
 class PreviewCreator:
@@ -77,28 +119,6 @@ class PreviewCreator:
         self.source_fps = float(source_fps)
         self.frame_period_ns = int(round(1_000_000_000 / self.source_fps))
 
-    def create_grid_frame_and_save(self, index, aligned_frames, progress_queue):
-        try:
-            image_paths = aligned_frames[index]
-            images = [Image.open(p).resize(self.image_size) for p in image_paths]
-
-            grid_width = self.image_size[0] * self.cols
-            grid_height = self.image_size[1] * self.rows
-            grid_image = Image.new('RGB', (grid_width, grid_height))
-
-            for idx, img in enumerate(images):
-                row = idx // self.cols
-                col = idx % self.cols
-                position = (col * self.image_size[0], row * self.image_size[1])
-                grid_image.paste(img, position)
-
-            output_path = os.path.join(self.output_path, f"frame_{index:04d}.jpg")
-            grid_image.save(output_path, quality=95)
-        except Exception as e:
-            print(f"Error on frame {index}: {e}", flush=True)
-        finally:
-            progress_queue.put(1)
-
     def unite_images(self):
         def handle_interrupt(sig, frame):
             print("\nInterrupt received, shutting down...", flush=True)
@@ -115,27 +135,27 @@ class PreviewCreator:
             return
 
         print(f"Starting frame generation for {frame_count} frames...", flush=True)
-        args = list(range(frame_count))
+        indices = range(frame_count)
+        worker_args = (aligned_frames, self.image_size, self.cols, self.rows, self.output_path)
+        process_count = min(cpu_count(), frame_count)
+        # Bound chunk size so tqdm still refreshes regularly even for large jobs.
+        chunk_size = max(1, min(32, frame_count // (process_count * 4)))
 
-        with Manager() as manager:
-            progress_queue = manager.Queue()
-            with Pool(processes=cpu_count()) as pool:
-                for i in args:
-                    pool.apply_async(self.create_grid_frame_and_save,
-                                     args=(i, aligned_frames, progress_queue))
-
-                try:
-                    with tqdm(total=frame_count) as pbar:
-                        completed = 0
-                        while completed < frame_count:
-                            progress_queue.get()
-                            completed += 1
-                            pbar.update(1)
-                except KeyboardInterrupt:
-                    print("\nKeyboardInterrupt received, terminating pool...", flush=True)
-                    pool.terminate()
-                    pool.join()
-                    sys.exit(1)
+        pool = Pool(processes=process_count,
+                    initializer=_init_worker,
+                    initargs=worker_args)
+        try:
+            iterator = pool.imap_unordered(_worker_create_grid_frame, indices, chunksize=chunk_size)
+            for _ in tqdm(iterator, total=frame_count):
+                pass
+        except KeyboardInterrupt:
+            print("\nKeyboardInterrupt received, terminating pool...", flush=True)
+            pool.terminate()
+            pool.join()
+            sys.exit(1)
+        else:
+            pool.close()
+            pool.join()
 
         print(f"Saved {frame_count} frames to {self.output_path}/", flush=True)
 
@@ -260,6 +280,12 @@ if __name__ == '__main__':
     # TODO verbose/silent
 
     args = parser.parse_args(remaining_argv)
+
+    # fill in values omitted on CLI with config defaults
+    for key, value in config_options.items():
+        if getattr(args, key, None) is None:
+            setattr(args, key, value)
+
     args.config = args_config.config
 
     # Check if topics were provided either via config or command line
