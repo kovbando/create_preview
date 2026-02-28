@@ -1,9 +1,3 @@
-# This is the speedup branch!!!
-TODO: make and test better optimized FFMPEG commmands
-TODO: update readme to reflect all the small changes in the speedup branch
-TODO: merge speedup branch
-This branch has an updated process pooling logic, and performs way better than the main brancch, but needs more testing!
-
 # create_preview
 Python script to create a collage of synchronized or unsynchronized pictures output from ros2 bag export images. These scripts will not create the actual video, you will need to run ffmpeg manually for that, but there are some guidelines on how to do that.\
 **Please read the Sync logic section before running the script.**
@@ -54,3 +48,9 @@ If you have an nvidia GPU and want to accelerate the encoding process:
 ffmpeg -framerate 20 -i ./output_frames/frame_%04d.jpg -vf "scale=1920:-2" -c:v hevc_nvenc -preset p6 -rc vbr -cq 20 preview.mp4
 ffmpeg -framerate 20 -i ./output_frames/frame_%04d.jpg -c:v hevc_nvenc -preset p6 -rc vbr -cq 20 preview.mp4
 ```
+
+# TODOs:
+TODO: make and test better optimized FFMPEG commmands\
+TODO: update readme to reflect all the small changes in the speedup branch\
+TODO: create a new branch for adding image captioning
+~~TODO: merge speedup branch~~\
