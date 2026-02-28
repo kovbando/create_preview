@@ -74,19 +74,20 @@ def _draw_text_box(draw, text, origin, font, padding=8, box_fill=(0, 0, 0), text
     return rect
 
 
-def _load_font():
-    try:
-        return ImageFont.truetype("DejaVuSans-Bold.ttf", 32)
-    except OSError:
-        return ImageFont.load_default()
-
-
 def _worker_create_grid_frame(index):
     state = _worker_state
     try:
         image_paths = state['aligned_frames'][index]
         resized_images = []
-        font = _load_font()
+        font = None
+        for font_name in ("DejaVuSans.ttf", "LiberationSans-Regular.ttf", "arial.ttf"):
+            try:
+                font = ImageFont.truetype(font_name, 32)
+                break
+            except OSError:
+                continue
+        if font is None:
+            font = ImageFont.load_default()
         for path in image_paths:
             with Image.open(path) as img:
                 resized = img.convert('RGB').resize(state['image_size'])
@@ -111,7 +112,7 @@ def _worker_create_grid_frame(index):
         max_text_width = state['grid_dims'][0] - 8
         fitted_output = _fit_text_to_width(output_name, font, max_text_width, grid_draw)
         output_box = grid_draw.textbbox((0, 0), fitted_output, font=font)
-        output_height = (output_box[3] - output_box[1]) + 16
+        output_height = (output_box[3] - output_box[1]) + 8
         output_top = max(4, state['grid_dims'][1] - output_height - 4)
         _draw_text_box(grid_draw, fitted_output, (4, output_top), font)
         grid_image.save(output_path, quality=90)
