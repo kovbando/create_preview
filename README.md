@@ -55,5 +55,6 @@ ffmpeg -framerate 20 -i ./output_frames/frame_%04d.jpg -c:v hevc_nvenc -preset p
 # TODOs:
 TODO: make and test better optimized FFMPEG commmands\
 TODO: update readme to reflect all the small changes in the speedup branch\
-TODO: create a new branch for adding image captioning\
+TODO: update readme for captioning branch
+~~TODO: create a new branch for adding image captioning~~\
 ~~TODO: merge speedup branch~~\
