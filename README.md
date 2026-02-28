@@ -1,4 +1,7 @@
 # This is the speedup branch!!!
+TODO: make and test better optimized FFMPEG commmands
+TODO: update readme to reflect all the small changes in the speedup branch
+TODO: merge speedup branch
 This branch has an updated process pooling logic, and performs way better than the main brancch, but needs more testing!
 
 # create_preview
@@ -51,4 +54,3 @@ If you have an nvidia GPU and want to accelerate the encoding process:
 ffmpeg -framerate 20 -i ./output_frames/frame_%04d.jpg -vf "scale=1920:-2" -c:v hevc_nvenc -preset p6 -rc vbr -cq 20 preview.mp4
 ffmpeg -framerate 20 -i ./output_frames/frame_%04d.jpg -c:v hevc_nvenc -preset p6 -rc vbr -cq 20 preview.mp4
 ```
-TODO: make and test better optimiized FFMPEG commmands
