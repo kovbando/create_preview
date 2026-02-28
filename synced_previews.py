@@ -35,7 +35,7 @@ def load_images_from_folder(folder):
 _worker_state = {}
 
 
-def _init_worker(aligned_frames, image_size, cols, rows, output_path):
+def _init_worker(aligned_frames, image_size, cols, rows, output_path, textboxes):
     global _worker_state
     grid_width = image_size[0] * cols
     grid_height = image_size[1] * rows
@@ -46,6 +46,7 @@ def _init_worker(aligned_frames, image_size, cols, rows, output_path):
         'rows': rows,
         'grid_dims': (grid_width, grid_height),
         'output_path': output_path,
+        'textboxes': textboxes,
     }
 
 
@@ -79,23 +80,26 @@ def _worker_create_grid_frame(index):
     try:
         image_paths = state['aligned_frames'][index]
         resized_images = []
+        textboxes = state.get('textboxes', True)
         font = None
-        for font_name in ("DejaVuSans.ttf", "LiberationSans-Regular.ttf", "arial.ttf"):
-            try:
-                font = ImageFont.truetype(font_name, 32)
-                break
-            except OSError:
-                continue
-        if font is None:
-            font = ImageFont.load_default()
+        if textboxes:
+            for font_name in ("DejaVuSans.ttf", "LiberationSans-Regular.ttf", "arial.ttf"):
+                try:
+                    font = ImageFont.truetype(font_name, 32)
+                    break
+                except OSError:
+                    continue
+            if font is None:
+                font = ImageFont.load_default()
         for path in image_paths:
             with Image.open(path) as img:
                 resized = img.convert('RGB').resize(state['image_size'])
-                draw = ImageDraw.Draw(resized)
-                filename = os.path.basename(path)
-                max_text_width = state['image_size'][0] - 8
-                fitted = _fit_text_to_width(filename, font, max_text_width, draw)
-                _draw_text_box(draw, fitted, (4, 4), font)
+                if textboxes:
+                    draw = ImageDraw.Draw(resized)
+                    filename = os.path.basename(path)
+                    max_text_width = state['image_size'][0] - 8
+                    fitted = _fit_text_to_width(filename, font, max_text_width, draw)
+                    _draw_text_box(draw, fitted, (4, 4), font)
                 resized_images.append(resized)
 
         grid_image = Image.new('RGB', state['grid_dims'])
@@ -107,14 +111,15 @@ def _worker_create_grid_frame(index):
             grid_image.paste(img, position)
 
         output_path = os.path.join(state['output_path'], f"frame_{index:04d}.jpg")
-        grid_draw = ImageDraw.Draw(grid_image)
-        output_name = os.path.basename(output_path)
-        max_text_width = state['grid_dims'][0] - 8
-        fitted_output = _fit_text_to_width(output_name, font, max_text_width, grid_draw)
-        output_box = grid_draw.textbbox((0, 0), fitted_output, font=font)
-        output_height = (output_box[3] - output_box[1]) + 8
-        output_top = max(4, state['grid_dims'][1] - output_height - 4)
-        _draw_text_box(grid_draw, fitted_output, (4, output_top), font)
+        if textboxes:
+            grid_draw = ImageDraw.Draw(grid_image)
+            output_name = os.path.basename(output_path)
+            max_text_width = state['grid_dims'][0] - 8
+            fitted_output = _fit_text_to_width(output_name, font, max_text_width, grid_draw)
+            output_box = grid_draw.textbbox((0, 0), fitted_output, font=font)
+            output_height = (output_box[3] - output_box[1]) + 8
+            output_top = max(4, state['grid_dims'][1] - output_height - 4)
+            _draw_text_box(grid_draw, fitted_output, (4, output_top), font)
         grid_image.save(output_path, quality=90)
     except Exception as exc:
         print(f"Error on frame {index}: {exc}", flush=True)
@@ -130,7 +135,8 @@ class PreviewCreator:
                  rows,
                  image_width,
                  image_height,
-                 source_fps):
+                 source_fps,
+                 textboxes):
 
         self.folders = []
 
@@ -161,6 +167,7 @@ class PreviewCreator:
                 self.cols = (len(self.folders + 1)) // rows
 
         self.image_size = (image_width, image_height)
+        self.textboxes = bool(textboxes)
 
         if not source_fps or source_fps <= 0:
             raise ValueError('source_fps must be a positive number')
@@ -184,7 +191,7 @@ class PreviewCreator:
 
         print(f"Starting frame generation for {frame_count} frames...", flush=True)
         indices = range(frame_count)
-        worker_args = (aligned_frames, self.image_size, self.cols, self.rows, self.output_path)
+        worker_args = (aligned_frames, self.image_size, self.cols, self.rows, self.output_path, self.textboxes)
         process_count = min(cpu_count(), frame_count)
         # Bound chunk size so tqdm still refreshes regularly even for large jobs.
         chunk_size = max(1, min(32, frame_count // (process_count * 4)))
@@ -256,6 +263,7 @@ def load_config_file(config_path):
         'image_width': int,
         'image_height': int,
         'source_fps': (int, float),
+        'textboxes': bool,
     }
 
     with open(config_path, 'r') as f:
@@ -318,9 +326,17 @@ if __name__ == '__main__':
     parser.add_argument('-sf', '--source_fps',
                         type=float, default=20.0,
                         help='Source capture rate (frames per second) used for synchronization')
+    parser.add_argument('--textboxes',
+                        dest='textboxes', action='store_true',
+                        help='Enable filename textboxes on the output images')
+    parser.add_argument('--no-textboxes',
+                        dest='textboxes', action='store_false',
+                        help='Disable filename textboxes on the output images')
     parser.add_argument('-t', '--topics',
                         nargs='+',
                         help='Input topic (folder) names')
+
+    parser.set_defaults(textboxes=True)
 
     # override defaults with config file options
     parser.set_defaults(**config_options)
@@ -347,5 +363,6 @@ if __name__ == '__main__':
                                      getattr(args, 'image_width', None),
                                      getattr(args, 'image_height', None),
                                      getattr(args, 'source_fps', None),
+                                     getattr(args, 'textboxes', True),
                                      )
     preview_creator.unite_images()

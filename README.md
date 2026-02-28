@@ -35,6 +35,7 @@ rows: int,
 image_width: int,
 image_height: int,
 source_fps: float,
+textboxes: bool,
 ```
 
 ## Turning images to video
