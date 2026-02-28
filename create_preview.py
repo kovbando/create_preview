@@ -1,5 +1,5 @@
 import os
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 from multiprocessing import Pool, cpu_count, Manager
 from tqdm import tqdm
 import signal
@@ -20,6 +20,31 @@ def load_images_from_folder(folder):
     ])
 
 
+def _fit_text_to_width(text, font, max_width, draw):
+    if draw.textbbox((0, 0), text, font=font)[2] <= max_width:
+        return text
+
+    ellipsis = '...'
+    trimmed = text
+    while trimmed:
+        trimmed = trimmed[:-1]
+        candidate = trimmed + ellipsis
+        if draw.textbbox((0, 0), candidate, font=font)[2] <= max_width:
+            return candidate
+    return ellipsis
+
+
+def _draw_text_box(draw, text, origin, font, padding=8, box_fill=(0, 0, 0), text_fill=(255, 0, 0)):
+    left, top = origin
+    text_box = draw.textbbox((0, 0), text, font=font)
+    text_width = text_box[2] - text_box[0]
+    text_height = text_box[3] - text_box[1]
+    rect = (left, top, left + text_width + (padding * 2), top + text_height + (padding * 2))
+    draw.rectangle(rect, fill=box_fill)
+    draw.text((left + padding, top + padding), text, font=font, fill=text_fill)
+    return rect
+
+
 class PreviewCreator:
     folders = []
 
@@ -29,7 +54,8 @@ class PreviewCreator:
                  cols,
                  rows,
                  image_width,
-                 image_height):
+                 image_height,
+                 textboxes):
 
         # check for valid topic folders
         for path in topics:
@@ -58,11 +84,34 @@ class PreviewCreator:
                 self.cols = (len(self.folders + 1)) // rows
 
         self.image_size = (image_width, image_height)
+        self.textboxes = bool(textboxes)
 
     def create_grid_frame_and_save(self, index, folders_images, progress_queue):
         try:
             image_paths = [folder[index] for folder in folders_images]
-            images = [Image.open(p).resize(self.image_size) for p in image_paths]
+            textboxes = self.textboxes
+            font = None
+            if textboxes:
+                for font_name in ("DejaVuSans.ttf", "LiberationSans-Regular.ttf", "arial.ttf"):
+                    try:
+                        font = ImageFont.truetype(font_name, 32)
+                        break
+                    except OSError:
+                        continue
+                if font is None:
+                    font = ImageFont.load_default()
+
+            images = []
+            for path in image_paths:
+                with Image.open(path) as img:
+                    resized = img.convert('RGB').resize(self.image_size)
+                    if textboxes:
+                        draw = ImageDraw.Draw(resized)
+                        filename = os.path.basename(path)
+                        max_text_width = self.image_size[0] - 8
+                        fitted = _fit_text_to_width(filename, font, max_text_width, draw)
+                        _draw_text_box(draw, fitted, (4, 4), font)
+                    images.append(resized)
 
             grid_width = self.image_size[0] * self.cols
             grid_height = self.image_size[1] * self.rows
@@ -75,6 +124,15 @@ class PreviewCreator:
                 grid_image.paste(img, position)
 
             output_path = os.path.join(self.output_path, f"frame_{index:04d}.jpg")
+            if textboxes:
+                grid_draw = ImageDraw.Draw(grid_image)
+                output_name = os.path.basename(output_path)
+                max_text_width = grid_width - 8
+                fitted_output = _fit_text_to_width(output_name, font, max_text_width, grid_draw)
+                output_box = grid_draw.textbbox((0, 0), fitted_output, font=font)
+                output_height = (output_box[3] - output_box[1]) + 8
+                output_top = max(4, grid_height - output_height - 4)
+                _draw_text_box(grid_draw, fitted_output, (4, output_top), font)
             grid_image.save(output_path, quality=95)
         except Exception as e:
             print(f"Error on frame {index}: {e}", flush=True)
@@ -127,6 +185,7 @@ def load_config_file(config_path):
             'image_width': int,
             'image_height': int,
         'source_fps': (int, float),
+        'textboxes': bool,
     }
 
     with open(config_path, 'r') as f:
@@ -187,9 +246,17 @@ if __name__ == '__main__':
     parser.add_argument('-ih', '--image_height',
                         type=int, default=1080,
                         help='Input image height')
+    parser.add_argument('--textboxes',
+                        dest='textboxes', action='store_true',
+                        help='Enable filename textboxes on the output images')
+    parser.add_argument('--no-textboxes',
+                        dest='textboxes', action='store_false',
+                        help='Disable filename textboxes on the output images')
     parser.add_argument('-t', '--topics',
                         nargs='+',
                         help='Input topic (folder) names')
+
+    parser.set_defaults(textboxes=True)
 
     # override defaults with config file options
     parser.set_defaults(**config_options)
@@ -215,5 +282,6 @@ if __name__ == '__main__':
                                      getattr(args, 'rows', None),
                                      getattr(args, 'image_width', None),
                                      getattr(args, 'image_height', None),
+                                     getattr(args, 'textboxes', True),
                                      )
     preview_creator.unite_images()
