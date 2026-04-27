@@ -30,3 +30,6 @@ image_height: 1200
 
 # Capture FPS of the input image streams (used for timestamp alignment)
 source_fps: 20.0
+
+# Enable or disable filename textboxes on the output images
+textboxes: true

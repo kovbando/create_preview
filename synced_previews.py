@@ -1,5 +1,5 @@
 import os
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 from multiprocessing import Pool, cpu_count
 from tqdm import tqdm
 import signal
@@ -35,7 +35,7 @@ def load_images_from_folder(folder):
 _worker_state = {}
 
 
-def _init_worker(aligned_frames, image_size, cols, rows, output_path):
+def _init_worker(aligned_frames, image_size, cols, rows, output_path, textboxes):
     global _worker_state
     grid_width = image_size[0] * cols
     grid_height = image_size[1] * rows
@@ -46,7 +46,33 @@ def _init_worker(aligned_frames, image_size, cols, rows, output_path):
         'rows': rows,
         'grid_dims': (grid_width, grid_height),
         'output_path': output_path,
+        'textboxes': textboxes,
     }
+
+
+def _fit_text_to_width(text, font, max_width, draw):
+    if draw.textbbox((0, 0), text, font=font)[2] <= max_width:
+        return text
+
+    ellipsis = '...'
+    trimmed = text
+    while trimmed:
+        trimmed = trimmed[:-1]
+        candidate = trimmed + ellipsis
+        if draw.textbbox((0, 0), candidate, font=font)[2] <= max_width:
+            return candidate
+    return ellipsis
+
+
+def _draw_text_box(draw, text, origin, font, padding=8, box_fill=(0, 0, 0), text_fill=(255, 0, 0)):
+    left, top = origin
+    text_box = draw.textbbox((0, 0), text, font=font)
+    text_width = text_box[2] - text_box[0]
+    text_height = text_box[3] - text_box[1]
+    rect = (left, top, left + text_width + (padding * 2), top + text_height + (padding * 2))
+    draw.rectangle(rect, fill=box_fill)
+    draw.text((left + padding, top + padding), text, font=font, fill=text_fill)
+    return rect
 
 
 def _worker_create_grid_frame(index):
@@ -54,9 +80,27 @@ def _worker_create_grid_frame(index):
     try:
         image_paths = state['aligned_frames'][index]
         resized_images = []
+        textboxes = state.get('textboxes', True)
+        font = None
+        if textboxes:
+            for font_name in ("DejaVuSans.ttf", "LiberationSans-Regular.ttf", "arial.ttf"):
+                try:
+                    font = ImageFont.truetype(font_name, 32)
+                    break
+                except OSError:
+                    continue
+            if font is None:
+                font = ImageFont.load_default()
         for path in image_paths:
             with Image.open(path) as img:
-                resized_images.append(img.resize(state['image_size']))
+                resized = img.convert('RGB').resize(state['image_size'])
+                if textboxes:
+                    draw = ImageDraw.Draw(resized)
+                    filename = os.path.basename(path)
+                    max_text_width = state['image_size'][0] - 8
+                    fitted = _fit_text_to_width(filename, font, max_text_width, draw)
+                    _draw_text_box(draw, fitted, (4, 4), font)
+                resized_images.append(resized)
 
         grid_image = Image.new('RGB', state['grid_dims'])
         tile_width, tile_height = state['image_size']
@@ -67,10 +111,29 @@ def _worker_create_grid_frame(index):
             grid_image.paste(img, position)
 
         output_path = os.path.join(state['output_path'], f"frame_{index:04d}.jpg")
+        if textboxes:
+            grid_draw = ImageDraw.Draw(grid_image)
+            output_name = os.path.basename(output_path)
+            max_text_width = state['grid_dims'][0] - 8
+            fitted_output = _fit_text_to_width(output_name, font, max_text_width, grid_draw)
+            output_box = grid_draw.textbbox((0, 0), fitted_output, font=font)
+            output_height = (output_box[3] - output_box[1]) + 8
+            output_top = max(4, state['grid_dims'][1] - output_height - 4)
+            _draw_text_box(grid_draw, fitted_output, (4, output_top), font)
         grid_image.save(output_path, quality=90)
     except Exception as exc:
         print(f"Error on frame {index}: {exc}", flush=True)
     return 1
+
+
+def _write_sync_list(output_path, aligned_frames):
+    sync_list_path = os.path.join(output_path, 'synclist.txt')
+    with open(sync_list_path, 'w', encoding='utf-8') as sync_list:
+        for index, image_paths in enumerate(aligned_frames):
+            output_name = f"frame_{index:04d}.jpg"
+            input_names = [os.path.relpath(path) for path in image_paths]
+            sync_list.write('\t'.join([*input_names, output_name]))
+            sync_list.write('\n')
 
 
 class PreviewCreator:
@@ -82,7 +145,8 @@ class PreviewCreator:
                  rows,
                  image_width,
                  image_height,
-                 source_fps):
+                 source_fps,
+                 textboxes):
 
         self.folders = []
 
@@ -113,6 +177,7 @@ class PreviewCreator:
                 self.cols = (len(self.folders + 1)) // rows
 
         self.image_size = (image_width, image_height)
+        self.textboxes = bool(textboxes)
 
         if not source_fps or source_fps <= 0:
             raise ValueError('source_fps must be a positive number')
@@ -134,9 +199,11 @@ class PreviewCreator:
             print('No overlapping timestamps found across topics.', flush=True)
             return
 
+        _write_sync_list(self.output_path, aligned_frames)
+
         print(f"Starting frame generation for {frame_count} frames...", flush=True)
         indices = range(frame_count)
-        worker_args = (aligned_frames, self.image_size, self.cols, self.rows, self.output_path)
+        worker_args = (aligned_frames, self.image_size, self.cols, self.rows, self.output_path, self.textboxes)
         process_count = min(cpu_count(), frame_count)
         # Bound chunk size so tqdm still refreshes regularly even for large jobs.
         chunk_size = max(1, min(32, frame_count // (process_count * 4)))
@@ -157,7 +224,7 @@ class PreviewCreator:
             pool.close()
             pool.join()
 
-        print(f"Saved {frame_count} frames to {self.output_path}/", flush=True)
+        print(f"Saved {frame_count} frames and synclist.txt to {self.output_path}/", flush=True)
 
     def align_frames(self, folders_images):
         if any(len(images) == 0 for images in folders_images):
@@ -208,6 +275,7 @@ def load_config_file(config_path):
         'image_width': int,
         'image_height': int,
         'source_fps': (int, float),
+        'textboxes': bool,
     }
 
     with open(config_path, 'r') as f:
@@ -270,9 +338,17 @@ if __name__ == '__main__':
     parser.add_argument('-sf', '--source_fps',
                         type=float, default=20.0,
                         help='Source capture rate (frames per second) used for synchronization')
+    parser.add_argument('--textboxes',
+                        dest='textboxes', action='store_true',
+                        help='Enable filename textboxes on the output images')
+    parser.add_argument('--no-textboxes',
+                        dest='textboxes', action='store_false',
+                        help='Disable filename textboxes on the output images')
     parser.add_argument('-t', '--topics',
                         nargs='+',
                         help='Input topic (folder) names')
+
+    parser.set_defaults(textboxes=True)
 
     # override defaults with config file options
     parser.set_defaults(**config_options)
@@ -299,5 +375,6 @@ if __name__ == '__main__':
                                      getattr(args, 'image_width', None),
                                      getattr(args, 'image_height', None),
                                      getattr(args, 'source_fps', None),
+                                     getattr(args, 'textboxes', True),
                                      )
     preview_creator.unite_images()

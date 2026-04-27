@@ -1,3 +1,5 @@
+# this is the captioning brannch
+
 # create_preview
 Python script to create a collage of synchronized or unsynchronized pictures output from ros2 bag export images. These scripts will not create the actual video, you will need to run ffmpeg manually for that, but there are some guidelines on how to do that.\
 **Please read the Sync logic section before running the script.**
@@ -15,6 +17,7 @@ pip install -r requirements.txt
 There is two python scripts, that do the same thing, and use the same options, but with different synchronizaton logic.\
 `create_preview.py` is the simpler, It reads all the files from all the input topic folders, and puts them side-by-side. The reesultt will be as many combined images as many files there are in the topic containing the *least* amount of pictures. This logic kind of crude, and does *not* take into account any kind of timestamping.\
 `synced_previews.py` has a mopre advanced sync logic. It reads all the files, and it needs to have an FPS configured. It will parse the filenames of every file, interpret them as a nanosecond level UNIX-timestamp. Then, based on the timestamps and FPS it puts the closest in time pictures in the collage. This way the time  sync between all the selected topics are kept, based on the timestamp. If there is a missing frame, it will be filled by the closest-in-time frame, so the output will always have all the cameras filled. 
+The synchronized output directory also contains a `synclist.txt` file with one line per output frame. Each line lists the selected input image paths followed by the generated output frame name, separated by tabs.
 
 # Usage
 The script can be run with various options described by
@@ -35,6 +38,7 @@ rows: int,
 image_width: int,
 image_height: int,
 source_fps: float,
+textboxes: bool,
 ```
 
 ## Turning images to video
@@ -52,5 +56,6 @@ ffmpeg -framerate 20 -i ./output_frames/frame_%04d.jpg -c:v hevc_nvenc -preset p
 # TODOs:
 TODO: make and test better optimized FFMPEG commmands\
 TODO: update readme to reflect all the small changes in the speedup branch\
-TODO: create a new branch for adding image captioning\
+TODO: update readme for captioning branch\
+~~TODO: create a new branch for adding image captioning~~\
 ~~TODO: merge speedup branch~~\
