@@ -126,6 +126,16 @@ def _worker_create_grid_frame(index):
     return 1
 
 
+def _write_sync_list(output_path, aligned_frames):
+    sync_list_path = os.path.join(output_path, 'synclist.txt')
+    with open(sync_list_path, 'w', encoding='utf-8') as sync_list:
+        for index, image_paths in enumerate(aligned_frames):
+            output_name = f"frame_{index:04d}.jpg"
+            input_names = [os.path.relpath(path) for path in image_paths]
+            sync_list.write('\t'.join([*input_names, output_name]))
+            sync_list.write('\n')
+
+
 class PreviewCreator:
 
     def __init__(self,
@@ -189,6 +199,8 @@ class PreviewCreator:
             print('No overlapping timestamps found across topics.', flush=True)
             return
 
+        _write_sync_list(self.output_path, aligned_frames)
+
         print(f"Starting frame generation for {frame_count} frames...", flush=True)
         indices = range(frame_count)
         worker_args = (aligned_frames, self.image_size, self.cols, self.rows, self.output_path, self.textboxes)
@@ -212,7 +224,7 @@ class PreviewCreator:
             pool.close()
             pool.join()
 
-        print(f"Saved {frame_count} frames to {self.output_path}/", flush=True)
+        print(f"Saved {frame_count} frames and synclist.txt to {self.output_path}/", flush=True)
 
     def align_frames(self, folders_images):
         if any(len(images) == 0 for images in folders_images):

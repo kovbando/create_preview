@@ -17,6 +17,7 @@ pip install -r requirements.txt
 There is two python scripts, that do the same thing, and use the same options, but with different synchronizaton logic.\
 `create_preview.py` is the simpler, It reads all the files from all the input topic folders, and puts them side-by-side. The reesultt will be as many combined images as many files there are in the topic containing the *least* amount of pictures. This logic kind of crude, and does *not* take into account any kind of timestamping.\
 `synced_previews.py` has a mopre advanced sync logic. It reads all the files, and it needs to have an FPS configured. It will parse the filenames of every file, interpret them as a nanosecond level UNIX-timestamp. Then, based on the timestamps and FPS it puts the closest in time pictures in the collage. This way the time  sync between all the selected topics are kept, based on the timestamp. If there is a missing frame, it will be filled by the closest-in-time frame, so the output will always have all the cameras filled. 
+The synchronized output directory also contains a `synclist.txt` file with one line per output frame. Each line lists the selected input image paths followed by the generated output frame name, separated by tabs.
 
 # Usage
 The script can be run with various options described by
