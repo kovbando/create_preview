@@ -8,10 +8,6 @@ import sys
 import argparse
 import yaml
 
-## ffmpeg command for rendering the video afterwards: ffmpeg -framerate 20 -i frame_%04d.jpg -vf "scale=1920:-2" -c:v libx264 -preset ultrafast -crf 30 -threads 8 -max_muxing_queue_size 1024 -bufsize 256M -rtbufsize 256M output.mp4
-## ffmpeg -framerate 20 -i ./preview/frame_%04d.jpg -vf "scale=1920:-2" -c:v h264_nvenc -preset p1 -rc:v vbr -cq 30 -b:v 5M -max_muxing_queue_size 1024 -bufsize 256M -rtbufsize 256M output.mp4
-
-
 def extract_timestamp_ns(path):
     filename = os.path.splitext(os.path.basename(path))[0]
     try:
@@ -126,12 +122,19 @@ def _worker_create_grid_frame(index):
     return 1
 
 
+def _safe_relpath(path, start):
+    try:
+        return os.path.relpath(path, start)
+    except ValueError:
+        return os.path.abspath(path)
+
+
 def _write_sync_list(output_path, aligned_frames):
     sync_list_path = os.path.join(output_path, 'synclist.txt')
     with open(sync_list_path, 'w', encoding='utf-8') as sync_list:
         for index, image_paths in enumerate(aligned_frames):
             output_name = f"frame_{index:04d}.jpg"
-            input_names = [os.path.relpath(path) for path in image_paths]
+            input_names = [_safe_relpath(path, output_path) for path in image_paths]
             sync_list.write('\t'.join([*input_names, output_name]))
             sync_list.write('\n')
 
